@@ -11,6 +11,9 @@ use diagnostics;
 #        perl launch_calculate_TMM_factors.pl <EXP_ID>
 ###################################################
 
+## TO DO: Need to be modified to accomodate library pools as well
+##        Create .targets files with groups of samples instead of individual samples?
+
 use Getopt::Long;
 use FindBin;
 use lib "$FindBin::Bin/.."; # Get lib path for Utils.pm

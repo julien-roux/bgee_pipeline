@@ -17,6 +17,9 @@ require('rna_seq_utils.pl');
 # -debug: if provided, run in verbose mode (printing the update/insert SQL queries, not executing them)
 #############################################################
 
+## TO DO: Need to be modified to accomodate library pools as well
+##        Insertion in rnaSeqLibraryPool in addition to rnaSeqLibrary
+
 # Define arguments & their default value
 my ($bgee_connector) = ('');
 my ($tmm_results)    = ('');

@@ -353,11 +353,16 @@ add foreign key (rnaSeqExperimentId) references rnaSeqExperiment(rnaSeqExperimen
 add foreign key (keywordId) references keyword(keywordId) on delete cascade;
 /*!40000 ALTER TABLE `rnaSeqExperimentToKeyword` ENABLE KEYS */;
 
-/*!40000 ALTER TABLE `rnaSeqLibrary` DISABLE KEYS */;
-alter table rnaSeqLibrary
+/*!40000 ALTER TABLE `rnaSeqLibraryPool` DISABLE KEYS */;
+alter table rnaSeqLibraryPool 
 add foreign key (rnaSeqExperimentId) references rnaSeqExperiment(rnaSeqExperimentId) on delete cascade,
 add foreign key (rnaSeqPlatformId) references rnaSeqPlatform(rnaSeqPlatformId) on delete cascade,
 add foreign key (conditionId) references cond(conditionId) on delete cascade;
+/*!40000 ALTER TABLE `rnaSeqLibraryPool` ENABLE KEYS */;
+
+/*!40000 ALTER TABLE `rnaSeqLibrary` DISABLE KEYS */;
+alter table rnaSeqLibrary 
+add foreign key (rnaSeqLibraryPoolId) references rnaSeqLibraryPool(rnaSeqLibraryPoolId) on delete cascade;
 /*!40000 ALTER TABLE `rnaSeqLibrary` ENABLE KEYS */;
 
 /*!40000 ALTER TABLE `rnaSeqRun` DISABLE KEYS */;
@@ -365,11 +370,17 @@ alter table rnaSeqRun
 add foreign key (rnaSeqLibraryId) references rnaSeqLibrary(rnaSeqLibraryId) on delete cascade;
 /*!40000 ALTER TABLE `rnaSeqRun` ENABLE KEYS */;
 
-/*!40000 ALTER TABLE `rnaSeqResult` DISABLE KEYS */;
-alter table rnaSeqResult
-add foreign key (rnaSeqLibraryId) references rnaSeqLibrary(rnaSeqLibraryId) on delete cascade,
+/*!40000 ALTER TABLE `rnaSeqPooledResult` DISABLE KEYS */;
+alter table rnaSeqPooledResult 
+add foreign key (rnaSeqLibraryPoolId) references rnaSeqLibraryPool(rnaSeqLibraryPoolId) on delete cascade,
 add foreign key (bgeeGeneId) references gene(bgeeGeneId) on delete cascade,
 add foreign key (expressionId) references expression(expressionId) on delete set null;
+/*!40000 ALTER TABLE `rnaSeqPooledResult` ENABLE KEYS */;
+
+/*!40000 ALTER TABLE `rnaSeqResult` DISABLE KEYS */;
+alter table rnaSeqResult 
+add foreign key (rnaSeqLibraryId) references rnaSeqLibrary(rnaSeqLibraryId) on delete cascade, 
+add foreign key (bgeeGeneId) references gene(bgeeGeneId) on delete cascade;
 /*!40000 ALTER TABLE `rnaSeqResult` ENABLE KEYS */;
 
 /*!40000 ALTER TABLE `rnaSeqTranscriptResult` DISABLE KEYS */;
@@ -386,11 +397,11 @@ add foreign key (rnaSeqExperimentId) references rnaSeqExperiment(rnaSeqExperimen
 
 -- ****** for diff expression ********
 
-/*!40000 ALTER TABLE `deaSampleGroupToRnaSeqLibrary` DISABLE KEYS */;
-alter table deaSampleGroupToRnaSeqLibrary
+/*!40000 ALTER TABLE `deaSampleGroupToRnaSeqLibraryPool` DISABLE KEYS */;
+alter table deaSampleGroupToRnaSeqLibraryPool 
 add foreign key (deaSampleGroupId) references deaSampleGroup(deaSampleGroupId) on delete cascade,
-add foreign key (rnaSeqLibraryId) references rnaSeqLibrary(rnaSeqLibraryId) on delete cascade;
-/*!40000 ALTER TABLE `deaSampleGroupToRnaSeqLibrary` ENABLE KEYS */;
+add foreign key (rnaSeqLibraryPoolId) references rnaSeqLibraryPool(rnaSeqLibraryPoolId) on delete cascade;
+/*!40000 ALTER TABLE `deaSampleGroupToRnaSeqLibraryPool` ENABLE KEYS */;
 
 /*!40000 ALTER TABLE `deaRNASeqSummary` DISABLE KEYS */;
 alter table deaRNASeqSummary

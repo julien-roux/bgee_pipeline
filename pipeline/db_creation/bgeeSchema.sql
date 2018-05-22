@@ -885,14 +885,61 @@ create table rnaSeqPlatform (
     rnaSeqPlatformDescription text
 ) engine = innodb;
 
--- corresponds to one sample
--- uses to produce several runs
-create table rnaSeqLibrary (
--- primary ID, from GEO, pattern GSMxxx
-    rnaSeqLibraryId varchar(70) not null,
+-- Corresponds to a pool of technical replicates. 
+-- Notes from https://gitlab.isb-sib.ch/Bgee/bgee_pipeline/issues/5#note_1079: 
+-- * Difference between runs and technical replicates: runs can be seen as one particular type 
+-- of technical replicates. Different runs are always made using the same RNA-seq library material. 
+-- They are usually available under the sample ID (GSM ID) in GEO.
+-- * Other types of technical replicates are possible (i.e., 2 libraries prepared from the same RNA material), 
+-- but these are usually available as separate samples (GSM IDs) in GEO.
+-- * We reasoned that it seems most appropriate not to pool technical replicates with different sample IDs 
+-- from the beginning of the pipeline, because some users will probably like 
+-- to get RPKMs for any given sample ID. On our side the pooling will be made late in the pipeline, 
+-- by adding the read counts of two samples to calculate the final RPKMs for presence/absence, and for DE analysis.
+-- Therefore, we keep the tables rnaSeqLibrary and rnaSeqResult
+create table rnaSeqLibraryPool (
+--  Bgee internal ID
+    rnaSeqLibraryPoolId mediumint unsigned not null,
     rnaSeqExperimentId varchar(70) not null,
     rnaSeqPlatformId varchar(255) not null,
     conditionId mediumint unsigned not null,
+-- TMM normalization factor
+    tmmFactor decimal(8, 6) not null default 1.0, 
+-- RPKM threshold to consider a gene as expressed
+    rpkmThreshold decimal(16, 6) not null,
+    allGenesPercentPresent decimal(5, 2) unsigned not null default 0,
+    proteinCodingGenesPercentPresent decimal(5, 2) unsigned not null default 0,
+    intergenicRegionsPercentPresent decimal(5, 2) unsigned not null default 0,
+-- total number of reads in library, including those not mapped.
+-- In case of paired-end libraries, it's the number of pairs of reads;
+-- In case of single read, it's the total number of reads
+    allReadsCount int unsigned not null default 0,
+-- total number of reads in library that were mapped to anything.
+-- if it is not a paired-end library, this number is equal to leftMappedReadsCount
+    allMappedReadsCount int unsigned not null default 0,
+-- number of pairs of reads that were mapped from the left part, in case of a paired-end library.
+-- In that case, this number is not independent from rightMappedReadsCount, a pair can be mapped
+-- from its left read AND its right read, or fron only one of them.
+-- if it was not a paired-end library, this field is the total number of reads mapped.
+    leftMappedReadsCount int unsigned not null default 0,
+-- number of reads that were mapped from the right part, in case of a paired-end library.
+-- In that case, this number is not independent from leftMappedReadsCount, a pair can be mapped
+-- from its left read AND its right read, or from only one of them.
+-- if it was not a paired-end library, this field is left to 0.
+    rightMappedReadsCount int unsigned not null default 0,
+    minReadLength int unsigned not null default 0,
+    maxReadLength int unsigned not null default 0,
+--  Is the library built using paired end?
+    libraryType enum('single', 'paired') not null,
+    libraryOrientation enum('forward', 'reverse', 'unstranded')
+) engine = innodb;
+
+--  corresponds to one sample used to produce several runs. 
+-- can be grouped inside a pool of technical replicates
+create table rnaSeqLibrary (
+-- primary ID, from GEO, pattern GSMxxx
+    rnaSeqLibraryId varchar(70) not null,
+    rnaSeqLibraryPoolId mediumint unsigned not null,
 -- TMM normalization factor
     tmmFactor decimal(8, 6) not null default 1.0,
 -- FPKM threshold to consider a gene as expressed
@@ -944,8 +991,8 @@ create table rnaSeqLibraryDiscarded (
 
 -- This table contains TPM/RPKM/read count values for each gene for each library
 -- and link them to an expressionId
-create table rnaSeqResult (
-    rnaSeqLibraryId varchar(70) not null,
+create table rnaSeqPooledResult (
+    rnaSeqLibraryPoolId mediumint unsigned not null,
     bgeeGeneId mediumint unsigned not null COMMENT 'Internal gene ID',
     fpkm decimal(16, 6) not null,
     tpm decimal(16, 6) not null,
@@ -980,6 +1027,32 @@ create table rnaSeqResult (
     reasonForExclusion enum('not excluded', 'pre-filtering',
         'noExpression conflict', 'undefined') not null default 'not excluded'
 ) engine = innodb;
+
+--  This table contains RPK values for each Ensembl gene for each library
+--  and link them to an expressionId
+create table rnaSeqResult (
+    rnaSeqLibraryId varchar(70) not null,
+    bgeeGeneId mediumint unsigned not null COMMENT 'Internal gene ID',
+    rpkm decimal(16, 6) not null,
+    tpm decimal(16, 6) not null, 
+--  for information, measure not normalized for reads or genes lengths
+    readsCount int unsigned not null,
+    detectionFlag enum('undefined', 'absent', 'present') default 'undefined',
+--  Warning, qualities must be ordered, the index in the enum is used in many queries.
+--  We should only see genes with 'high quality' here
+    rnaSeqData enum('no data', 'poor quality', 'high quality') default 'no data',
+--  When both expressionId and noExpressionId are null, the probeset is not used for the summary of expression.
+--  Reasons are:
+--  pre filtering: Probesets always seen as "absent" or "marginal" over the whole dataset are removed
+--  bronze quality: for a gene/organ/stage, mix of probesets "absent" and "marginal" (no "present" and inconsistency expression / no expression)
+--  absent low quality (MAS5): probesets always "absent" for this gene/organ/stage, but only seen by MAS5 (that we do not trust = "low quality" - "noExpression" should always be "high quality").
+--  noExpression conflict: a "noExpression" result has been removed because of expression in some substructures/child stages.
+-- undefined: only 'undefined' call have been seen
+    reasonForExclusion enum('not excluded', 'pre-filtering',
+        'bronze quality', 'absent low quality',
+        'noExpression conflict', 'undefined') not null default 'not excluded'
+) engine = innodb;
+
 
 -- This table contains TPM/RPKM/read count values for each transcript for each library
 -- NOTE Bgee 14: as of Bgee 14 this table is not filled
@@ -1072,9 +1145,9 @@ create table deaSampleGroupToAffymetrixChip (
 -- A same library can be part of several groups, for instance if it was use for DEAs
 -- with different comparisonFactors. But all the rnaSeqLibraries inside a deaSampleGroup
 -- are unique
-create table deaSampleGroupToRnaSeqLibrary (
+create table deaSampleGroupToRnaSeqLibraryPool (
     deaSampleGroupId mediumint unsigned not null,
-    rnaSeqLibraryId varchar(70) not null
+    rnaSeqLibraryPoolId mediumint unsigned not null
 ) engine = innodb;
 
 -- differentialExpressionAnalysisProbesetsSummary

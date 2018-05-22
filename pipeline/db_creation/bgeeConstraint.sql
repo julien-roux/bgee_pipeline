@@ -414,6 +414,11 @@ alter table rnaSeqPlatform
 add primary key (rnaSeqPlatformId);
 /*!40000 ALTER TABLE `rnaSeqPlatform` ENABLE KEYS */;
 
+/*!40000 ALTER TABLE `rnaSeqLibraryPool` DISABLE KEYS */;
+alter table rnaSeqLibraryPool  
+modify rnaSeqLibraryPoolId mediumint unsigned not null auto_increment primary key;
+/*!40000 ALTER TABLE `rnaSeqLibraryPool` ENABLE KEYS */;
+
 /*!40000 ALTER TABLE `rnaSeqLibrary` DISABLE KEYS */;
 alter table rnaSeqLibrary
 add primary key (rnaSeqLibraryId);
@@ -428,6 +433,11 @@ add primary key (rnaSeqRunId);
 alter table rnaSeqLibraryDiscarded
 add primary key (rnaSeqLibraryId);
 /*!40000 ALTER TABLE `rnaSeqLibraryDiscarded` ENABLE KEYS */;
+
+/*!40000 ALTER TABLE `rnaSeqPooledResult` DISABLE KEYS */;
+alter table rnaSeqPooledResult 
+add primary key (bgeeGeneId, rnaSeqLibraryPoolId);
+/*!40000 ALTER TABLE `rnaSeqPooledResult` ENABLE KEYS */;
 
 /*!40000 ALTER TABLE `rnaSeqResult` DISABLE KEYS */;
 alter table rnaSeqResult
@@ -446,10 +456,10 @@ add primary key (expressionId, rnaSeqExperimentId);
 
 -- ****** for diff expression ********
 
-/*!40000 ALTER TABLE `deaSampleGroupToRnaSeqLibrary` DISABLE KEYS */;
-alter table deaSampleGroupToRnaSeqLibrary
-add primary key (rnaSeqLibraryId, deaSampleGroupId);
-/*!40000 ALTER TABLE `deaSampleGroupToRnaSeqLibrary` ENABLE KEYS */;
+/*!40000 ALTER TABLE `deaSampleGroupToRnaSeqLibraryPool` DISABLE KEYS */;
+alter table deaSampleGroupToRnaSeqLibraryPool 
+add primary key (rnaSeqLibraryPoolId, deaSampleGroupId);
+/*!40000 ALTER TABLE `deaSampleGroupToRnaSeqLibraryPool` ENABLE KEYS */;
 
 /*!40000 ALTER TABLE `deaRNASeqSummary` DISABLE KEYS */;
 alter table deaRNASeqSummary

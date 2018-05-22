@@ -14,6 +14,9 @@
 
 ## Output: one TSV file for each target file
 
+## TO DO: Need to be modified to accomodate library pools as well
+##        Sum reads for groups of samples from .target files?
+
 ## Required packages
 library(edgeR)
 
