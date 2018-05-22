@@ -1,14 +1,16 @@
 ## Marta Rosikiewicz 11/2014; modified Julien Roux 10/16
+## modified Julien Wollbrett 01/2018
 
 ## This script perform differential expression analysis on RNA-seq datasets using voom normalisation and Empirical Bayes Statistic (package limma)
 
-## Julien: after reading Soneson et al. 2015 paper in F1000Research, I wanted to implement to use of scaled TPMs (= TPMs summed at gene level * sum of estimated counts) combined with voom. But after discussion with Charlotte Soneson, it appears that in her benchmarks, using the TPMs (not logged) wiht voom performs as well, or sometimes even a bit better, depending on the FDR threshold. Voom allows to deal with the heteroskedasticity of TPMs quite well. As this is a fast and simple solution, this is the solution implemented below.
+## Julien Roux: after reading Soneson et al. 2015 paper in F1000Research, I wanted to implement to use of scaled TPMs (= TPMs summed at gene level * sum of estimated counts) combined with voom. But after discussion with Charlotte Soneson, it appears that in her benchmarks, using the TPMs (not logged) wiht voom performs as well, or sometimes even a bit better, depending on the FDR threshold. Voom allows to deal with the heteroskedasticity of TPMs quite well. As this is a fast and simple solution, this is the solution implemented below.
 ## I also implemented the use of voomWithQualityWeights instead of voom, see Liu et al (2015) NAR
 
 ##### arguments to provide
 # target_file_path   - path to the file with target info (3 colums: 1 - organID, 2 - stageID, 3 - names of files with results for the samples)
 # output_folder_path - path to the output folder
-# input_folder_path  - path to the directory with all sample results for given experiment
+# input_folder_path  - path to the directory with all sample results for all libraries
+# abundance_file_name- name of the file containing all abundance gene level
 # speciesID          - id of the species
 # R_log_file         - (optional) path to file to where R will write output
 
@@ -18,10 +20,10 @@
 # argument value (after =) quoted  with double quoting : " "
 
 #### usage
-# R CMD BATCH --no-save --no-restore '--args target_file_path="target_file_path" output_folder_path="output_folder_path" input_folder_path="input_folder_path" speciesID="speciesID" ' diff_analysis_RNA-seq.R R_log_file
+# R CMD BATCH --no-save --no-restore '--args target_file_path="target_file_path" output_folder_path="output_folder_path" input_folder_path="input_folder_path" abundance_file_name="abundance_file_name" speciesID="speciesID" ' diff_analysis_RNA-seq.R R_log_file
 
 #### example:
-# R CMD BATCH --no-save --no-restore '--args target_file_path="../targets/GSE30352___10090.target" output_folder_path="../diff_results/GSE30352" input_folder_path="../all_results/GSE30352" speciesID="10090" ' diff_analysis_RNA-seq.R R_log_file
+# R CMD BATCH --no-save --no-restore '--args target_file_path="../targets/devAndAnat/GSE30352___10090.target" output_folder_path="../processed_differential_bgee_v14/devAndAnat/GSE30352" input_folder_path="../all_results_bgee_v14" abundance_file_name="abundance_gene_level+new_tpm+new_fpkm+calls.tsv" speciesID="10090" ' diff_analysis_RNA-seq.R R_log_file
 
 #### output files
 # 4 columns with header, first field starting with '#' ("#gene_names","p_value","logFC","present_calls")
@@ -46,7 +48,7 @@ if (length(cmd_args)==0){
 }
 
 # checking if all necessairy arguments were passed in command line
-command_arg <- c("target_file_path", "output_folder_path", "input_folder_path", "speciesID")
+command_arg <- c("target_file_path", "output_folder_path", "input_folder_path", "abundance_file_name", "speciesID")
 
 for(c_arg in command_arg){
   if(!exists(c_arg)){
@@ -67,10 +69,10 @@ if(file.exists(target_file_path)){
 ## create an exprsMatrix from read count data ##
 #################################################
 
-sampleNames <- target[,3];
+sampleNames <- target[,5];
 
 ## reading in one file in order to get the number of genes
-example_file <- read.table(file.path(input_folder_path, target[1,3]), sep="\t", header=T, as.is=TRUE)
+example_file <- read.table(file.path(input_folder_path, target[1,5], abundance_file_name), sep="\t", header=T, as.is=TRUE)
 gene_nr <- nrow(example_file)
 gene_names <- example_file[,1]
 
@@ -82,7 +84,7 @@ callMatrix=matrix(ncol=length(sampleNames), nrow=gene_nr)
 ## filling in expression and call matrix
 for (i in 1:length(sampleNames)){
   ## first column used as row names
-  expr <- read.table(file.path(input_folder_path, target[i,3]), sep="\t", row.names=1, header=T, as.is=TRUE)
+  expr <- read.table(file.path(input_folder_path, target[i,5], abundance_file_name), sep="\t", row.names=1, header=T, as.is=TRUE)
   ## matrix of TPMs
   exprMatrix[,i] = as.numeric(expr[,2])
   ## expression calls
@@ -104,8 +106,9 @@ phD <- as.vector(paste(target[,1], target[,2], sep="_"))
 phD <- gsub(":", "_",  phD)
 
 #########################################################
+
 cat ("factors for each sample:\n")
-cat(paste(paste(target[,3], phD, sep="\t"), "\n", sep=""))
+cat(paste(paste(target[,5], phD, sep="\t"), "\n", sep=""))
 pheno_groups <- factor(phD)
 
 ## removing of genes that are absent in all samples
@@ -191,7 +194,7 @@ for (i in 1:length(unique(pheno_groups))){
 }
 
 ## save sample weigths: we want to be able to know if an sample had a lower quality and was down-weighted in teh analysis
-write.table(samplew, file=file.path(output_folder_path, "sampleWeights.tsv"), sep="\t", quote=FALSE, col.names=FALSE, row.names=TRUE)
+write.table(samplew, file=file.path(output_folder_path, paste(speciesID, "_", unique(pheno_groups)[i], "_", organ_nr, "_", stage_nr, "_sampleWeights.tsv", sep="")), sep="\t", quote=FALSE, col.names=FALSE, row.names=TRUE)
 
 ## Session information
 print(sessionInfo())

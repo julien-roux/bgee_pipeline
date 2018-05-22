@@ -33,10 +33,10 @@ my %opts = ('debug'             => \$debug,            # more verbose
 my $test_options = Getopt::Long::GetOptions(%opts);
 if ( !$test_options || $bgee_connector eq '' || ($#ARGV ne -1 && $#ARGV ne 1) || $path_target eq '' || $path_processed eq '' ){
     print "\n\tInvalid or missing argument:
-\te.g. $0 -bgee=\$(BGEECMD) -path_target=\$(RNASEQBIOCONDUCTORTARG) -path_processed=\$(RNASEQDIFFEXPRPATH)  <expId> <speciesId>
+\te.g. $0 -bgee=\$(BGEECMD) -path_target=\$(RNASEQBIOCONDUCTORTARG_DEVANDANAT) -path_processed=\$(RNASEQDIFFEXPRPATH_DEVANDANAT)  <expId> <speciesId>
 \t-bgee             Bgee    connector string
-\t-path_target      rna_seq/bioconductor/targets/        directory path
-\t-path_processed   rna_seq/processed_differential/      directory path
+\t-path_target      rna_seq/bioconductor_bgee_v14/targets/devAndAnat	directory path
+\t-path_processed   rna_seq/processed_differential_bgee_v14/devAndAnat  directory path
 \t-debug            More verbose
 \n";
     exit 1;
